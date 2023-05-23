@@ -41,7 +41,7 @@ namespace L4_Oscilloscope
             dataStorage[3].chart = chart4;
 
             CreateDataGrid();
-            Calibrate();
+            //Calibrate();
             dataThread = new Thread[4];
             // Запуск потоков для получения данных
             StartDataThread();
@@ -148,6 +148,8 @@ namespace L4_Oscilloscope
             private List<DateTime> timestamps;
             public Chart chart;
             public double min = -100, max = 100;
+            public Func<double[], int, double[]> filterFunction = NoiseFilter.None;
+            public int windowSize = 0;
 
             public DataStorage()
             {
@@ -180,9 +182,13 @@ namespace L4_Oscilloscope
             {
                 chart.Series[0].Points.Clear();
                 int count = Math.Min(data.Count, N);
-                for (int i = data.Count - count; i < data.Count; i++)
+                double[] drawData = data.GetRange(data.Count - count, count).ToArray();
+                DateTime[] drawTime = timestamps.GetRange(data.Count - count, count).ToArray();
+
+                drawData = filterFunction(drawData, windowSize);
+                for (int i = count-1; i >=0; i--)
                 {
-                    chart.Series[0].Points.AddXY(timestamps[i], data[i]);
+                    chart.Series[0].Points.AddXY(drawTime[i], drawData[i]);
                 }
 
             }
@@ -219,7 +225,7 @@ namespace L4_Oscilloscope
         {
             dataGridView.Rows.Clear();
             dataGridView.Columns.Clear();
-            string[] HeaderNames = { "", "ip", "port", "Минимум", "Максимум", "Изменение", "Показ", "Шумоподавление" };
+            string[] HeaderNames = { "", "ip", "port", "Минимум", "Максимум", "Изменение", "Показ", "Шумоподавление","Окно" };
 
             foreach (var name in HeaderNames)
             {
@@ -232,11 +238,11 @@ namespace L4_Oscilloscope
                 dataGridView.Columns.Add(Column);
             }
             dataGridView.Columns[0].Width = 20;
-            for (int i = 1; i < dataGridView.Columns.Count - 1; i++)
+            for (int i = 1; i < dataGridView.Columns.Count - 2; i++)
             {
                 dataGridView.Columns[i].Width = 70;
             }
-            dataGridView.Columns[dataGridView.Columns.Count - 1].Width = 140;
+            dataGridView.Columns[dataGridView.Columns.Count - 2].Width = 140;
             for (int i = 1; i < 5; i++)
             {
                 NewLine(i);
@@ -261,12 +267,14 @@ namespace L4_Oscilloscope
             VievCell.Value = 1000;
             var NoiseCell = new DataGridViewComboBoxCell();
             NoiseCell.DisplayStyle = DataGridViewComboBoxDisplayStyle.DropDownButton;
-            string[] STREAMS = new string[] { "Нет", "Выборочное средне", "Скользящее среднее", "Медианный фильтр" };
+            string[] STREAMS = new string[] { "Нет", "Выборочное среднее", "Скользящее среднее", "Взвешенное среднее", "Медиана" };
             foreach (var s in STREAMS)
                 NoiseCell.Items.Add(s);
             NoiseCell.Value = NoiseCell.Items[0];
+            var WindowCell = new DataGridViewTextBoxCell();
+            WindowCell.Value = 5;
 
-            Row.Cells.AddRange(CheckCell, IpCell, portCell, MinCell, MaxCell, DeltaCell, VievCell, NoiseCell);
+            Row.Cells.AddRange(CheckCell, IpCell, portCell, MinCell, MaxCell, DeltaCell, VievCell, NoiseCell, WindowCell);
             dataGridView.Rows.Add(Row);
         }
 
@@ -284,6 +292,28 @@ namespace L4_Oscilloscope
             for (int i = 0; i < 4; i++)
             {
                 dataStorage[i].SetMinMax(double.Parse(dataGridView[3, i].Value.ToString()), double.Parse(dataGridView[4, i].Value.ToString()));
+                dataStorage[i].windowSize = int.Parse(dataGridView[8, i].Value.ToString());
+
+
+                string selectedFunction = dataGridView[7, i].Value.ToString();
+                switch (selectedFunction)
+                {
+                    case "Выборочное среднее":
+                        dataStorage[i].filterFunction = NoiseFilter.ApplyMeanFilter;
+                        break;
+                    case "Скользящее среднее":
+                        dataStorage[i].filterFunction = NoiseFilter.ApplySimpleMovingAverageFilter;
+                        break;
+                    case "Взвешенное среднее":
+                        dataStorage[i].filterFunction = NoiseFilter.ApplyWeightedMovingAverageFilter;
+                        break;
+                    case "Медиана":
+                        dataStorage[i].filterFunction = NoiseFilter.ApplyMedianFilter;
+                        break;
+                    case "Нет":
+                        dataStorage[i].filterFunction = NoiseFilter.None;
+                        break;
+                }
             }
         }
     }
