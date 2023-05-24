@@ -150,6 +150,8 @@ namespace L4_Oscilloscope
             public double min = -100, max = 100;
             public Func<double[], int, double[]> filterFunction = NoiseFilter.None;
             public int windowSize = 0;
+            public bool Enable = true;
+            public double delta = 0;
 
             public DataStorage()
             {
@@ -159,12 +161,24 @@ namespace L4_Oscilloscope
 
             public void AddData(double value)
             {
-                if (value > min && value < max)
+                if (Enable && value > min && value < max)
                 {
-                    data.Add(value);
-                    timestamps.Add(DateTime.Now);
-                }
+                    if (delta == 0 || data.Count < 0)
+                    {
+                        data.Add(value);
+                        timestamps.Add(DateTime.Now);
+                    }
+                    else
+                    {
+                        double deltanew = Math.Abs(data[data.Count - 1] - value);
+                        if (deltanew < delta)
+                        {
+                            data.Add(value);
+                            timestamps.Add(DateTime.Now);
+                        }
+                    }
 
+                }
             }
 
             public void ClearData()
@@ -186,7 +200,7 @@ namespace L4_Oscilloscope
                 DateTime[] drawTime = timestamps.GetRange(data.Count - count, count).ToArray();
 
                 drawData = filterFunction(drawData, windowSize);
-                for (int i = count-1; i >=0; i--)
+                for (int i = count - 1; i >= 0; i--)
                 {
                     chart.Series[0].Points.AddXY(drawTime[i], drawData[i]);
                 }
@@ -225,7 +239,7 @@ namespace L4_Oscilloscope
         {
             dataGridView.Rows.Clear();
             dataGridView.Columns.Clear();
-            string[] HeaderNames = { "", "ip", "port", "Минимум", "Максимум", "Изменение", "Показ", "Шумоподавление","Окно" };
+            string[] HeaderNames = { "", "ip", "port", "Минимум", "Максимум", "Изменение", "Показ", "Шумоподавление", "Окно" };
 
             foreach (var name in HeaderNames)
             {
@@ -258,7 +272,7 @@ namespace L4_Oscilloscope
             var portCell = new DataGridViewTextBoxCell();
             portCell.Value = "100" + i;
             var MinCell = new DataGridViewTextBoxCell();
-            MinCell.Value = 0;
+            MinCell.Value = -255;
             var MaxCell = new DataGridViewTextBoxCell();
             MaxCell.Value = 255;
             var DeltaCell = new DataGridViewTextBoxCell();
@@ -272,7 +286,7 @@ namespace L4_Oscilloscope
                 NoiseCell.Items.Add(s);
             NoiseCell.Value = NoiseCell.Items[0];
             var WindowCell = new DataGridViewTextBoxCell();
-            WindowCell.Value = 5;
+            WindowCell.Value = 100;
 
             Row.Cells.AddRange(CheckCell, IpCell, portCell, MinCell, MaxCell, DeltaCell, VievCell, NoiseCell, WindowCell);
             dataGridView.Rows.Add(Row);
@@ -293,7 +307,8 @@ namespace L4_Oscilloscope
             {
                 dataStorage[i].SetMinMax(double.Parse(dataGridView[3, i].Value.ToString()), double.Parse(dataGridView[4, i].Value.ToString()));
                 dataStorage[i].windowSize = int.Parse(dataGridView[8, i].Value.ToString());
-
+                dataStorage[i].Enable = (bool)dataGridView[0, i].Value;
+                dataStorage[i].delta = double.Parse(dataGridView[5, i].Value.ToString());
 
                 string selectedFunction = dataGridView[7, i].Value.ToString();
                 switch (selectedFunction)
