@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -206,6 +207,23 @@ namespace L4_Oscilloscope
                 }
 
             }
+
+            public void SaveDataToFile(string filePath)
+            {
+                using (StreamWriter writer = new StreamWriter(filePath))
+                {
+                    // Записываем заголовки столбцов
+                    writer.WriteLine("Timestamp,Data");
+
+                    // Записываем данные и временные метки
+                    for (int i = 0; i < data.Count; i++)
+                    {
+                        string timestamp = timestamps[i].ToString("yyyy-MM-dd HH:mm:ss");
+
+                        writer.WriteLine($"{timestamp},{data[i]}");
+                    }
+                }
+            }
         }
 
         private void button_IP_Click(object sender, EventArgs e)
@@ -328,6 +346,20 @@ namespace L4_Oscilloscope
                     case "Нет":
                         dataStorage[i].filterFunction = NoiseFilter.None;
                         break;
+                }
+            }
+        }
+
+        private void chart1_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                SaveFileDialog saveFileDialog = new SaveFileDialog();
+                saveFileDialog.Filter = "PNG Image|*.png|JPEG Image|*.jpg|BMP Image|*.bmp";
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    Chart chart = (Chart)sender;
+                    chart.SaveImage(saveFileDialog.FileName, ChartImageFormat.Png);
                 }
             }
         }
