@@ -57,7 +57,11 @@ namespace L4_Oscilloscope
         {
             double[] filteredData = new double[data.Length];
 
-            double[] weights = Enumerable.Repeat(1.0 / windowSize, windowSize).ToArray();
+            double[] weights = new double[windowSize];
+            for (int i = 0; i < windowSize; i++)
+            {
+                weights[i] = (i + 1) / (double)(windowSize + 1);
+            }
 
             for (int i = 0; i < data.Length; i++)
             {
@@ -65,12 +69,14 @@ namespace L4_Oscilloscope
                 int end = i;
 
                 double sum = 0;
+                double weightSum = 0;
                 for (int j = start; j <= end; j++)
                 {
                     sum += data[j] * weights[j - start];
+                    weightSum += weights[j - start];
                 }
 
-                filteredData[i] = sum;
+                filteredData[i] = sum/ weightSum;
             }
 
             return filteredData;
@@ -83,8 +89,8 @@ namespace L4_Oscilloscope
 
             for (int i = 0; i < data.Length; i++)
             {
-                int start = Math.Max(0, i - windowSize / 2);
-                int end = Math.Min(data.Length - 1, i + windowSize / 2);
+                int start = Math.Max(0, i - windowSize);
+                int end = Math.Min(data.Length - 1, i + windowSize);
 
                 List<double> values = new List<double>();
                 for (int j = start; j <= end; j++)

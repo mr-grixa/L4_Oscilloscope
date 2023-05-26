@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -248,7 +249,7 @@ namespace L4_Oscilloscope
         {
             for (int i = 0; i < 4; i++)
             {
-                if (int.TryParse(dataGridView[6, i].Value.ToString(), out int value))
+                if (int.TryParse(dataGridView[6, i].Value.ToString(), out int value)&& value>0)
                     dataStorage[i].DrawLast100Data(value);
             }
         }
@@ -321,33 +322,41 @@ namespace L4_Oscilloscope
         }
         private void Calibrate()
         {
-            for (int i = 0; i < 4; i++)
+            try
             {
-                dataStorage[i].SetMinMax(double.Parse(dataGridView[3, i].Value.ToString()), double.Parse(dataGridView[4, i].Value.ToString()));
-                dataStorage[i].windowSize = int.Parse(dataGridView[8, i].Value.ToString());
-                dataStorage[i].Enable = (bool)dataGridView[0, i].Value;
-                dataStorage[i].delta = double.Parse(dataGridView[5, i].Value.ToString());
-
-                string selectedFunction = dataGridView[7, i].Value.ToString();
-                switch (selectedFunction)
+                dataGridView.BackgroundColor = Color.White;
+                for (int i = 0; i < 4; i++)
                 {
-                    case "Выборочное среднее":
-                        dataStorage[i].filterFunction = NoiseFilter.ApplyMeanFilter;
-                        break;
-                    case "Скользящее среднее":
-                        dataStorage[i].filterFunction = NoiseFilter.ApplySimpleMovingAverageFilter;
-                        break;
-                    case "Взвешенное среднее":
-                        dataStorage[i].filterFunction = NoiseFilter.ApplyWeightedMovingAverageFilter;
-                        break;
-                    case "Медиана":
-                        dataStorage[i].filterFunction = NoiseFilter.ApplyMedianFilter;
-                        break;
-                    case "Нет":
-                        dataStorage[i].filterFunction = NoiseFilter.None;
-                        break;
+                    dataStorage[i].SetMinMax(double.Parse(dataGridView[3, i].Value.ToString()), double.Parse(dataGridView[4, i].Value.ToString()));
+                    dataStorage[i].windowSize = Math.Max(0, int.Parse(dataGridView[8, i].Value.ToString()));
+                    dataStorage[i].Enable = (bool)dataGridView[0, i].Value;
+                    dataStorage[i].delta = Math.Max(0, double.Parse(dataGridView[5, i].Value.ToString()));
+
+                    string selectedFunction = dataGridView[7, i].Value.ToString();
+                    switch (selectedFunction)
+                    {
+                        case "Выборочное среднее":
+                            dataStorage[i].filterFunction = NoiseFilter.ApplyMeanFilter;
+                            break;
+                        case "Скользящее среднее":
+                            dataStorage[i].filterFunction = NoiseFilter.ApplySimpleMovingAverageFilter;
+                            break;
+                        case "Взвешенное среднее":
+                            dataStorage[i].filterFunction = NoiseFilter.ApplyWeightedMovingAverageFilter;
+                            break;
+                        case "Медиана":
+                            dataStorage[i].filterFunction = NoiseFilter.ApplyMedianFilter;
+                            break;
+                        case "Нет":
+                            dataStorage[i].filterFunction = NoiseFilter.None;
+                            break;
+                    }
                 }
             }
+            catch {
+                dataGridView.BackgroundColor = Color.Red;
+            }
+
         }
 
         private void chart1_MouseDoubleClick(object sender, MouseEventArgs e)
